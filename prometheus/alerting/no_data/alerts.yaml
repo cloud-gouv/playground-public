@@ -1,0 +1,14 @@
+groups:
+  - name: test
+    rules:
+      - record: testts
+        expr: sum by (symbolic_name) (timestamp(node_time_seconds))
+      - alert: NoDataFromInstance
+        expr:  (time() - max_over_time(testts[1h])) >= 300
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: ""
+          description: ""
+
