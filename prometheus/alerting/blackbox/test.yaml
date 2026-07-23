@@ -1,0 +1,207 @@
+rule_files:
+  - alerts.yaml
+evaluation_interval: 1m
+
+tests:
+  - name: Ping A-OK
+    input_series:
+      - series: &ping_infra_series probe_success{address="192.0.2.1", appliance_type="bastion", availability_zone="AZ1", component_type="proxies_infra", dst_component_type="proxies_infra", dst_tenant_type="hoster_access", dst_type="vip", env="prd", instance="prometheus.exporter.blackbox.blackbox_10s", job="integrations/blackbox/icmp", region="cloud01", dst_appliance_type="forward_proxy_in", stack_name="proxies_infra", tenant_type="hoster_access"}
+        values: 1x10
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: FailedICMPBlackboxProbe
+
+  - name: DNS A-OK
+    interval: &dns_interval 300s
+    input_series:
+      - series: &dns_series probe_success{appliance_type="forward_proxy_in",availability_zone="AZ1",component_type="proxies_infra",dns_server="192.0.2.1",domain="example.com",env="prd",instance="prometheus.exporter.blackbox.blackbox_300s",job="integrations/blackbox/dns",protocol="tcp",region="cloud01",stack_name="proxies_infra",tenant_type="hoster_access"}
+        values: 1x10
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedDNSBlackboxProbe
+
+  - name: HTTP A-OK
+    interval: &http_interval 300s
+    input_series:
+      - series: &http_series probe_success{appliance_type="forward_proxy_in",availability_zone="AZ1",component_type="proxies_infra",dst_cidr="192.0.2.1/32",dst_type="fip_cloud_admin",env="prd",http_proxy="http://127.0.0.1:8080",instance="prometheus.exporter.blackbox.blackbox_300s",job="integrations/blackbox/http",region="cloud01",src_cidr="192.0.2.2/32",src_type="fip_cloud_admin",stack_name="proxies_infra",tenant_type="hoster_access",url="https://example.com"}
+        values: 1x10
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedHTTPBlackboxProbe
+
+  - name: ICMP small disruption
+    input_series:
+      - series: *ping_infra_series
+        values: 1x5 0x3 1x2
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: FailedICMPBlackboxProbe
+
+  - name: DNS small disruption
+    interval: *dns_interval
+    input_series:
+      - series: *dns_series
+        values: 1x5 0x2 1x3
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedDNSBlackboxProbe
+
+  - name: HTTP small disruption
+    interval: *http_interval
+    input_series:
+      - series: *http_series
+        values: 1x5 0x2 1x3
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedHTTPBlackboxProbe
+
+  - name: ICMP disruption recovery
+    input_series:
+      - series: *ping_infra_series
+        values: 1 0x6 1x3
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: FailedICMPBlackboxProbe
+
+  - name: DNS disruption recovery
+    interval: *dns_interval
+    input_series:
+      - series: *dns_series
+        values: 1 0x6 1x3
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedDNSBlackboxProbe
+
+  - name: HTTP disruption recovery
+    interval: *http_interval
+    input_series:
+      - series: *http_series
+        values: 1 0x6 1x3
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedHTTPBlackboxProbe
+
+  - name: ICMP noticeable disruption
+    input_series:
+      - series: *ping_infra_series
+        values: 1x2 0x6 1x2
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: FailedICMPBlackboxProbe
+        exp_alerts:
+          - exp_labels:
+              address: 192.0.2.1
+              appliance_type: bastion
+              availability_zone: AZ1
+              component_type: proxies_infra
+              dst_appliance_type: forward_proxy_in
+              dst_component_type: proxies_infra
+              dst_tenant_type: hoster_access
+              dst_type: vip
+              env: prd
+              instance: prometheus.exporter.blackbox.blackbox_10s
+              job: integrations/blackbox/icmp
+              region: cloud01
+              severity: warning
+              stack_name: proxies_infra
+              tenant_type: hoster_access
+            exp_annotations:
+              summary: failed to ping hoster_access/proxies_infra/forward_proxy_in/vip/192.0.2.1
+              description: |
+                failed to ping for 5m
+                Destination:
+                  Tenant Type: hoster_access
+                  Component Type: proxies_infra
+                  Appliance Type: forward_proxy_in
+                  Address Type: vip
+                  Address: 192.0.2.1
+                Source:
+                  Region: cloud01
+                  Env: prd
+                  Tenant Type: hoster_access
+                  Component Type: proxies_infra
+                  Appliance Type: bastion
+                  Instance: prometheus.exporter.blackbox.blackbox_10s
+
+  - name: DNS noticeable disruption
+    interval: *dns_interval
+    input_series:
+      - series: *dns_series
+        values: 1x2 0x6 1x2
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedDNSBlackboxProbe
+        exp_alerts:
+          - exp_labels:
+              appliance_type: forward_proxy_in
+              availability_zone: AZ1
+              component_type: proxies_infra
+              dns_server: 192.0.2.1
+              domain: example.com
+              env: prd
+              instance: prometheus.exporter.blackbox.blackbox_300s
+              job: integrations/blackbox/dns
+              protocol: tcp
+              region: cloud01
+              severity: warning
+              stack_name: proxies_infra
+              tenant_type: hoster_access
+            exp_annotations:
+              summary: failed to query DNS 192.0.2.1 for example.com
+              description: |
+                failed to query DNS
+                Destination:
+                  Server: 192.0.2.1
+                  Protocol: tcp
+                  Domain: example.com
+                Source:
+                  Region: cloud01
+                  Env: prd
+                  Tenant Type: hoster_access
+                  Component Type: proxies_infra
+                  Appliance Type: forward_proxy_in
+                  Instance: prometheus.exporter.blackbox.blackbox_300s
+  - name: HTTP noticeable disruption
+    interval: *http_interval
+    input_series:
+      - series: *http_series
+        values: 1x2 0x6 1x2
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FailedHTTPBlackboxProbe
+        exp_alerts:
+          - exp_labels:
+              appliance_type: forward_proxy_in
+              availability_zone: AZ1
+              component_type: proxies_infra
+              dst_cidr: 192.0.2.1/32
+              dst_type: fip_cloud_admin
+              env: prd
+              http_proxy: http://127.0.0.1:8080
+              instance: prometheus.exporter.blackbox.blackbox_300s
+              job: integrations/blackbox/http
+              region: cloud01
+              severity: warning
+              src_cidr: 192.0.2.2/32
+              src_type: fip_cloud_admin
+              stack_name: proxies_infra
+              tenant_type: hoster_access
+              url: https://example.com
+            exp_annotations:
+              summary: failed to query HTTP resource https://example.com
+              description: |
+                failed to query HTTP resource
+                Destination:
+                  CIDR: 192.0.2.1/32
+                  Type: fip_cloud_admin
+                  URL: https://example.com
+                Source:
+                  Region: cloud01
+                  Env: prd
+                  Tenant Type: hoster_access
+                  Component Type: proxies_infra
+                  Appliance Type: forward_proxy_in
+                  Instance: prometheus.exporter.blackbox.blackbox_300s
+                  CIDR: 192.0.2.2/32
+                  Type: fip_cloud_admin
+                  Proxy: http://127.0.0.1:8080

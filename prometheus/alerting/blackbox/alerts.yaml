@@ -1,0 +1,98 @@
+groups:
+  - name: test
+    rules:
+      - alert: FailedICMPBlackboxProbe
+        expr: probe_success{job="integrations/blackbox/icmp"} == 0
+        for: 5m # 5m seems short, but we should not have overly long failures; rare cases on network operations may cause useless firing but they should be silenced ahead of time as planned maintenance
+        keep_firing_for: 1m # In order to prevent flapping, the situation must be stable for one minute straight for the situation to be fixed.
+        labels:
+          severity: warning
+        annotations:
+          summary: failed to ping {{ $labels.dst_tenant_type }}/{{ $labels.dst_component_type }}/{{ $labels.dst_appliance_type }}/{{ $labels.dst_type }}/{{ $labels.address }}
+          description: |
+            failed to ping for 5m
+            Destination:
+              Tenant Type: {{ $labels.dst_tenant_type }}
+              Component Type: {{ $labels.dst_component_type }}
+              Appliance Type: {{ $labels.dst_appliance_type }}
+              Address Type: {{ $labels.dst_type }}
+              Address: {{ $labels.address }}
+            Source:
+              Region: {{ $labels.region }}
+              Env: {{ $labels.env }}
+              Tenant Type: {{ $labels.tenant_type }}
+              {{- if ne $labels.beneficiary "" }}
+              Beneficiary: {{ $labels.beneficiary }}
+              {{- end }}
+              {{- if ne $labels.project "" }}
+              Project: {{ $labels.project }}
+              {{- end }}
+              {{- if ne $labels.service "" }}
+              Service: {{ $labels.service }}
+              {{- end }}
+              Component Type: {{ $labels.component_type }}
+              Appliance Type: {{ $labels.appliance_type }}
+              Instance: {{ $labels.instance }}
+      - alert: FailedDNSBlackboxProbe
+        expr: probe_success{job="integrations/blackbox/dns"} == 0
+        for: 15m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: failed to query DNS {{ $labels.dns_server }} for {{ $labels.domain }}
+          description: |
+            failed to query DNS
+            Destination:
+              Server: {{ $labels.dns_server }}
+              Protocol: {{ $labels.protocol }}
+              Domain: {{ $labels.domain }}
+            Source:
+              Region: {{ $labels.region }}
+              Env: {{ $labels.env }}
+              Tenant Type: {{ $labels.tenant_type }}
+              {{- if ne $labels.beneficiary "" }}
+              Beneficiary: {{ $labels.beneficiary }}
+              {{- end }}
+              {{- if ne $labels.project "" }}
+              Project: {{ $labels.project }}
+              {{- end }}
+              {{- if ne $labels.service "" }}
+              Service: {{ $labels.service }}
+              {{- end }}
+              Component Type: {{ $labels.component_type }}
+              Appliance Type: {{ $labels.appliance_type }}
+              Instance: {{ $labels.instance }}
+      - alert: FailedHTTPBlackboxProbe
+        expr: probe_success{job="integrations/blackbox/http"} == 0
+        for: 15m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: failed to query HTTP resource {{ $labels.url }}
+          description: |
+            failed to query HTTP resource
+            Destination:
+              CIDR: {{ $labels.dst_cidr }}
+              Type: {{ $labels.dst_type }}
+              URL: {{ $labels.url }}
+            Source:
+              Region: {{ $labels.region }}
+              Env: {{ $labels.env }}
+              Tenant Type: {{ $labels.tenant_type }}
+              {{- if ne $labels.beneficiary "" }}
+              Beneficiary: {{ $labels.beneficiary }}
+              {{- end }}
+              {{- if ne $labels.project "" }}
+              Project: {{ $labels.project }}
+              {{- end }}
+              {{- if ne $labels.service "" }}
+              Service: {{ $labels.service }}
+              {{- end }}
+              Component Type: {{ $labels.component_type }}
+              Appliance Type: {{ $labels.appliance_type }}
+              Instance: {{ $labels.instance }}
+              CIDR: {{ $labels.src_cidr }}
+              Type: {{ $labels.src_type }}
+              Proxy: {{ $labels.http_proxy }}

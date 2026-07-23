@@ -1,0 +1,28 @@
+rule_files:
+  - alerts.yaml
+evaluation_interval: 1m
+
+tests:
+  - name: missing charlie
+    input_series:
+      - series: node_time_seconds{symbolic_name="alice", instance="vm-01"}
+        values: 1781182790+60x30
+      - series: node_time_seconds{symbolic_name="bob", instance="vm-02"}
+        values: 1781182790+60x30
+      - series: node_time_seconds{symbolic_name="charlie", instance="vm-03"}
+        values: 1781182790+60x13 _x7 1781183390+60x10
+      - series: node_time_seconds{symbolic_name="david", instance="vm-04"}
+        values: 1781182790+60x15 _x15 
+      - series: node_time_seconds{symbolic_name="david", instance="vm-05"}
+        values: _x15 1781182790+60x15
+
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NoDataFromInstance
+        exp_alerts:
+          - exp_labels:
+              symbolic_name: charlie
+              severity: critical
+            exp_annotations:
+              summary: ""
+              description: ""
